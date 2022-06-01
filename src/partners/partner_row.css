@@ -1,0 +1,51 @@
+.row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: row;
+}
+
+.nickname {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.userkey {
+    font-size: 0.8rem;
+    font-style: italic;
+    margin: 0px 15px;
+}
+
+.userindicator {
+    border-radius: 100%;
+    width: 20px;
+    height: 20px;
+    background-color: red;
+    margin-right: 25px;
+}
+
+.online {
+    background-color: green;
+}
+
+.wrong-input {
+    border: 2px solid red;
+}
+
+input {
+    margin: 0px 15px;
+}
+
+button img {
+    height: 1.2rem;
+    cursor: pointer    
+}
+
+button {
+    cursor: pointer;
+}
+
+.boop-button {
+    all: unset;
+    margin: 10px 20px;
+}

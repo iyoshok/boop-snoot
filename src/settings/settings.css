@@ -3,6 +3,12 @@ html, body {
     margin: 0px;
 }
 
+h2 {
+    color: #002626;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+}
+
 .settings {
     width: 100%;
     height: 100%;

@@ -1,7 +1,7 @@
 import { createSignal, Match, onCleanup, onMount, Switch } from "solid-js";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
 
-interface ConnectionStatusPayload {
+export interface ConnectionStatusPayload {
     // -1 -> dis- / not connected
     // 0 -> attempting connection
     // 1 -> connected
@@ -13,8 +13,7 @@ export default function ConnectionIndicator(props) {
 
     onMount(async () => {
         await listen("connection-state-changed", event => {
-            const deconstructed = event.payload as ConnectionStatusPayload;
-            setConnectionState(deconstructed.status);
+            setConnectionState((event.payload as ConnectionStatusPayload).status);
         })
     })
 
