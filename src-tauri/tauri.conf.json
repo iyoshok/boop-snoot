@@ -34,7 +34,7 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "com.tauri.dev",
+      "identifier": "dev.iyoshok.boop",
       "longDescription": "",
       "macOS": {
         "entitlements": null,
@@ -63,7 +63,7 @@
         "fullscreen": false,
         "height": 600,
         "resizable": true,
-        "title": "boop the snoot.",
+        "title": "",
         "width": 800,
         "visible": true
       }
