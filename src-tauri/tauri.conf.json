@@ -11,7 +11,15 @@
     "version": "0.1.0"
   },
   "tauri": {
-    "allowlist": {},
+    "allowlist": {
+      "notification": {
+        "all": true
+      },
+      "window": {
+        "close": true,
+        "setTitle": true
+      }
+    },
     "bundle": {
       "active": true,
       "category": "SocialNetworking",
@@ -57,7 +65,8 @@
         "height": 600,
         "resizable": true,
         "title": "boop the snoot.",
-        "width": 800
+        "width": 800,
+        "visible": true
       }
     ]
   }

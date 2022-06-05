@@ -42,25 +42,30 @@ export default function Settings(props) {
         catch(err) {
             console.error("failed to save settings", err);
         }
+
+        props.savedSettings();
     };
 
     return (
         <>
             < div class="settings" >
                 <h2>Settings</h2>
-                <div class="settings-field">
-                    <label for="settings-server-address" >Server</label>
-                    <input type="text" id="settings-server-address" class="textbox" ref={fieldServer} />
+                <div class="settings-inputs">
+                    <label for="settings-server-address" >Server
+                        <input type="text" id="settings-server-address" class="textbox" ref={fieldServer} />
+                    </label>
+                    <div class="login">
+                        <label for="settings-user">Username
+                            <input type="text" id="settings-user" class="textbox" ref={fieldUser} />
+                        </label>
+                        <label for="settings-password">Password
+                            <input type="password" id="settings-password" class="textbox" ref={fieldPassword} />
+                        </label>
+                    </div>
                 </div>
-                <div class="settings-field">
-                    <label for="settings-user">User</label>
-                    <input type="text" id="settings-user" class="textbox" ref={fieldUser} />
+                <div class="save-container">
+                    <button id="save-settings" onClick={async () => await saveClick()} >Save Settings</button>
                 </div>
-                <div class="settings-field">
-                    <label for="settings-password">Password</label>
-                    <input type="password" id="settings-password" class="textbox" ref={fieldPassword} />
-                </div>
-                <button onClick={async () => await saveClick()} >Save</button>
             </div >
         </>
     )

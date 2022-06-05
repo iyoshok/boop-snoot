@@ -13,9 +13,7 @@ use crate::{
     partners::BoopPartner,
     send_boop_to_frontend,
     send_connection_status,
-    send_error_to_frontend,
     send_partners_update_event,
-    FrontendErrorMessage,
     PartnerOnlineStatus,
     ServerConnectionStatus
 };
@@ -169,16 +167,12 @@ pub async fn connect_to_server<'a>(
         {
             // log error
             error!("disconnected after connection I/O error: {}", err);
-            // signal frontend that connection was closed
-            send_error_to_frontend(&window, FrontendErrorMessage {
-                message: "Server connection was closed unexpectedly, see log for details".into()
-            });
-
-            // change connection status in frontend
-            send_connection_status(&window, ServerConnectionStatus::Disconnected);
         } else {
             info!("closed connection as expected");
         }
+
+        // change connection status in frontend
+        send_connection_status(&window, ServerConnectionStatus::Disconnected);
     });
 
     Ok(true)
@@ -291,7 +285,14 @@ async fn rw_loop(
             send_message(&mut writehalf, msg).await?;
           },
           Some(control_msg) = control_rx.recv() => {
-            handle_control_msg(control_msg, &mut writehalf).await?;
+            // handles all logic involved with the control channel from the mainthread to
+            // the connection loop
+            match control_msg {
+                ControlMessage::CloseConnection => {
+                    send_message(&mut writehalf, MessageType::DISCONNECT).await?;
+                    return Ok(());
+                }
+            }
           },
           res = reader.read_line(&mut buf) => {
             handle_message_input(res, &buf, &partners_handle, &mut missed_pongs, &mut writehalf, window).await?;
@@ -376,20 +377,26 @@ async fn handle_message_input(
                     MessageType::ONLINE(partner_key) => {
                         let mut partners = partners_handle.lock().await;
                         if let Some(entry) = partners.get_mut(&partner_key) {
-                            entry.1 = PartnerOnlineStatus::Online;
+                            if entry.1 != PartnerOnlineStatus::Online {
+                                // change state
+                                entry.1 = PartnerOnlineStatus::Online;
+                                
+                                // update frontend if necessary
+                                send_partners_update_event(window, &partner_key, PartnerOnlineStatus::Online);
+                            }
                         }
-
-                        // update frontend
-                        send_partners_update_event(window, &*partners);
                     }
                     MessageType::AFK(partner_key) => {
                         let mut partners = partners_handle.lock().await;
                         if let Some(entry) = partners.get_mut(&partner_key) {
-                            entry.1 = PartnerOnlineStatus::Afk;
+                            if entry.1 != PartnerOnlineStatus::Afk {
+                                // change state
+                                entry.1 = PartnerOnlineStatus::Afk;
+                                
+                                // update frontend if necessary
+                                send_partners_update_event(window, &partner_key, PartnerOnlineStatus::Afk);
+                            }
                         }
-
-                        // update frontend
-                        send_partners_update_event(window, &*partners);
                     }
                     _ => {
                         // against protocol -> disconnect
@@ -411,14 +418,6 @@ async fn handle_message_input(
 
     // none of the other logic failed -> should be okay
     Ok(())
-}
-
-async fn handle_control_msg(control_msg: ControlMessage, writehalf: &mut Writer) -> io::Result<()> {
-    // handles all logic involved with the control channel from the mainthread to
-    // the connection loop
-    match control_msg {
-        ControlMessage::CloseConnection => send_message(writehalf, MessageType::DISCONNECT).await
-    }
 }
 
 async fn send_error_and_close(writehalf: &mut Writer, err: MessageErrorKind) -> io::Result<()> {

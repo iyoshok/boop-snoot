@@ -1,6 +1,6 @@
 /* @refresh reload */
 import { render } from 'solid-js/web';
-import './notifications';
+import { appWindow } from '@tauri-apps/api/window';
 
 import App from './app';
 

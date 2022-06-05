@@ -1,0 +1,28 @@
+ul {
+    margin: 0;
+    padding: 0;
+}
+
+#add-partner {
+    all: unset;
+    margin-top: 20px;
+    cursor: pointer;
+    color: #7a28cb;
+    text-transform: capitalize;
+    padding: 10px 20px;
+    border-radius: 3px;
+}
+
+#add-partner:focus {
+    outline: 2px solid #7a28cb;
+}
+
+#add-partner:hover {
+    font-weight: bold;
+}
+
+#add-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}

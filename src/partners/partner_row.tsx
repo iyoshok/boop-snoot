@@ -1,9 +1,10 @@
 import { invoke } from "@tauri-apps/api";
-import { listen } from "@tauri-apps/api/event";
+import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { sendNotification } from "@tauri-apps/api/notification";
 import { createSignal, onCleanup, onMount, Show, useContext } from "solid-js";
-import { sendError } from "../notifications";
-import { PartnerLockContext } from "./partners_update_lock";
+import { unwrap } from "solid-js/store";
+import { sendError } from "../connection";
+import { BoopTimerContext } from "./booptimers";
 
 import './partner_row.css';
 
@@ -12,77 +13,88 @@ interface BoopPayload {
 }
 
 export default function PartnerRow(props) {
-    const [editing, setEditing] = createSignal(props.editing);
-    const [_, { lock, unlock }] = useContext(PartnerLockContext);
+    const [boops, { updateBoops }] = useContext(BoopTimerContext);
+    const [lastBoopTimeText, setBoopTimeText] = createSignal("none yet (╥﹏╥)");
+    const [editing, setEditing] = createSignal(false);
+    const [hovering, setHovering] = createSignal(false);
+    const [clicking, setClicking] = createSignal(false);
 
-    const connText = () => {
-        switch (props.online) {
-            case -1:
-                return "Offline";
-            case 1:
-                return "Online";
-            default:
-                return "Unknown";
-        }
-    }
-
+    let mainDiv: HTMLDivElement;
+    let editButton: HTMLButtonElement;
     let fieldNickname: HTMLInputElement;
     let fieldUserKey: HTMLInputElement;
 
-    let unlisten;
-    onMount(async () => {
-        if (editing()) {
-            lock();
-        }
+    let boopUnlisten: UnlistenFn;
+    let boopTimeInterval;    
 
-        unlisten = await listen("booped", async event => {
+    onMount(async () => {
+        boopUnlisten = await listen("booped", async event => {
             if ((event.payload as BoopPayload).partner_key == props.user_key) {
+                updateBoops(props.user_key);
                 sendNotification({
                     title: "BOOP!",
                     body: `You were booped by ${props.nickname}!`
                 })
+
+                // play animation
+                props.boopAnim(props.nickname);
+
+                // update boop time now
+                setBoopTimeText(formatTimeSince());
+                
+                if (!boopTimeInterval) {
+                    // update last boop time text every minute 
+                    boopTimeInterval = setInterval(() => {
+                        setBoopTimeText(formatTimeSince());
+                    }, 60000);
+                }
             }            
         });
+
+        mainDiv.addEventListener("mouseover", () => setHovering(true));
+        mainDiv.addEventListener("mouseleave", () => setHovering(false));
+        mainDiv.addEventListener("click", handleClick);
     })
 
     onCleanup(() => {
-        unlisten();
+        boopUnlisten();
+        clearInterval(boopTimeInterval);
+
+        mainDiv.removeEventListener("mouseover", () => setHovering(true));
+        mainDiv.removeEventListener("mouseleave", () => setHovering(false));
+        mainDiv.removeEventListener("click", handleClick);
     })
+
+    const handleClick = async (event) => {        
+        if (!editButton.contains(event.target) && !editing() && !clicking()) {
+            setClicking(true);
+            await boop();
+            setTimeout(() => {setClicking(false)}, 3000);
+        }        
+    }
 
     const saveEntry = async () => {
         let nickname = fieldNickname.value;
-        let userkey = fieldUserKey.value;
+        let new_user_key = fieldUserKey.value;
 
-        if (userkey.length == 0) {
+        if (new_user_key.length == 0) {
             fieldUserKey.classList.add("wrong-input");
             return;
         }
 
         if (nickname.length == 0) {
-            nickname = userkey;
-        }
-
-        try {
-            if (userkey != props.user_key) {
-                await invoke("del_partner", { partnerKey: props.user_key });
-            }
-
-            await invoke("add_or_update_partner", {
-                partner: {
-                    nickname: nickname,
-                    userKey: userkey
-                }
-            });
-
-            unlock();
-            await invoke("trigger_partners_event");
-        }
-        catch (err) {
-            await sendError(err);
+            nickname = new_user_key;
         }
 
         setEditing(false);
+
+        //idx: number, previous_user_key: string, user_key: string, nickname: string | null
+        await props.saver(props.idx, props.user_key, new_user_key, nickname);
     }
+
+    const deleteEntry = async () => {
+        await props.remover(props.idx, props.user_key.length > 0 ? props.user_key : null);
+    } 
 
     const boop = async () => {
         try {
@@ -95,54 +107,70 @@ export default function PartnerRow(props) {
         }
     }
 
-    const enableEdit = () => {
-        lock();
-        setEditing(true);
-    }    
-
-    const deletePartner = async () => {
-        try {
-            await invoke("del_partner", { partnerKey: props.user_key });
-            unlock();
-            await invoke("trigger_partners_event");
+    const formatTimeSince = () => {
+        if (boops[props.user_key] === undefined) {
+            return "none yet (╥﹏╥)";
         }
-        catch (err) {
-            await sendError(err);
+
+        const diff = (new Date().getTime()) / 1000 - boops[props.user_key];
+        if (diff < 15) {
+            return "just now";
+        }
+        else if (diff < 60) {
+            return "less than a minute ago";
+        }
+        else if (diff >= 60 && diff < 3600) {
+            const minutes = Math.floor(diff / 60);
+            return `${minutes} minute${minutes > 1 ? "s" : ""} ago`;
+        }
+        else {
+            const hours = Math.floor(diff / 3600);
+            return `${hours} hour${hours > 1 ? "s" : ""} ago`;
         }
     }
 
     return (
         <>
-            <div class="row">
+            <div ref={mainDiv} classList={{
+                row: true,
+                hovering: !editing() && hovering() && !clicking(),
+                clicking: !editing() && clicking()
+            }}>
                 <Show when={!editing()}>
-                    <button class="boop-button" onClick={async () => await boop()} ><img src="images/heart.ico" /></button>
-                    <span class="nickname">{props.nickname}</span>
-                    <span class="userkey">({props.user_key})</span>
-                    <span classList={{
-                        userindicator: true,
-                        online: props.online == 1
-                    }}></span>
-                    <button onClick={enableEdit}>...</button>
+                    <div class="first-row" >
+                        <p class="nickname">{props.nickname && props.nickname.length > 0 ? props.nickname : props.user_key}</p>
+                        <span classList={{
+                            indicator: true,
+                            online: props.online == 1
+                        }}>{}</span>
+                        <button class="edit" onClick={() => setEditing(true)} ref={editButton}><img src="icons/edit.svg" alt="edit" /></button>
+                    </div>
+                    <p class="last-boop">last boop: {lastBoopTimeText()}</p>
                 </Show>
 
-                <Show when={editing()} fallback={
-                    <input type="text" value={props.nickname} placeholder={props.user_key} ref={fieldNickname} />
-                    <input type="text" value={props.user_key} ref={fieldUserKey} onKeyDown={async (event) => {
-                        if (event.key === "Enter") {
-                            await saveEntry();
-                        }
-                    }} />
-                    <button onClick={async () => await saveEntry()}>save</button>
-                    <button onClick={async () => await deletePartner()}>delete</button>
-                }>
-                    <input type="text" value={props.nickname} placeholder={props.user_key} ref={fieldNickname} />
-                    <input type="text" value={props.user_key} ref={fieldUserKey} onKeyDown={async (event) => {
-                        if (event.key === "Enter") {
-                            await saveEntry();
-                        }
-                    }} />
-                    <button onClick={async () => await saveEntry()}>save</button>
-                    <button onClick={async () => await deletePartner()}>delete</button>
+                <Show when={editing()}>
+                    <div class="editing-section">
+                        <div class="group">
+                            <label>
+                                Nickname
+                                <input class="input-nickname" type="text" name="nickname" value={props.nickname} placeholder={"nickname"} ref={fieldNickname} />
+                            </label>
+                        </div>
+                        <div class="group">
+                            <label>
+                                Username
+                                <input class="input-user" type="text" value={props.user_key} placeholder={"username"} ref={fieldUserKey} onKeyDown={async (event) => {
+                                    if (event.key === "Enter") {
+                                        await saveEntry();
+                                    }
+                                }} /> 
+                            </label>
+                        </div>          
+                        <div class="buttons">
+                            <button class="button-edit" onClick={async () => await saveEntry()}><img src="icons/save.svg" alt="save" /></button>
+                            <button class="button-delete"onClick={async () => await deleteEntry()}><img src="icons/delete.svg" alt="delete" /></button>
+                        </div>
+                    </div>
                 </Show>
             </div>
         </>

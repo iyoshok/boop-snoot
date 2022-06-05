@@ -1,8 +1,3 @@
-html, body {
-    margin: 0;
-    padding: 0;
-}
-
 .login-banner {
     background-color: #ff4757;
     color: white;
@@ -16,4 +11,104 @@ html, body {
     left: 0;
     width: 100%;
     cursor: default;
+}
+
+#greeter {
+    z-index: 1000;
+    background-color: white;
+    letter-spacing: 3px;
+    padding: 1em 2.5vw;
+    
+    text-transform: lowercase;
+}
+
+.logo {    
+    color: #002233;    
+    font-size: 1.5em;
+    text-transform: uppercase;    
+
+    font-weight: bolder;
+    margin-right: 15px;
+}
+
+.connection {
+    font-size: 1em;
+    text-transform: uppercase;
+}
+
+.settings-button {
+    all: unset;
+    line-height: 0;
+    z-index: 1000;
+    cursor: pointer;
+    padding: 0;
+    position: absolute;
+    right: 2.5vw;
+    top: calc(1em + 3px);
+}
+
+.settings-button:focus {
+    outline: 2px solid #7a28cb;
+}
+
+.settings-button img {
+    height: 2em;
+    box-sizing: content-box;
+}
+
+#body-wrapper {
+    background-color: #EBB9DF;
+}
+
+#transition-wrapper {
+    position: absolute;
+    background-color: white;
+    overflow: hidden;
+    width: 100%;
+}
+
+#header {
+    box-shadow: 0 1px 2px rgba(0,0,0,0.07), 
+    0 2px 4px rgba(0,0,0,0.07), 
+    0 4px 8px rgba(0,0,0,0.07), 
+    0 8px 16px rgba(0,0,0,0.07),
+    0 16px 32px rgba(0,0,0,0.07), 
+    0 32px 64px rgba(0,0,0,0.07);
+    position: sticky;
+    top: 0;
+    left: 0;
+    width: 100%;
+}
+
+#boop-report {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    background-color: rgba(255, 255, 255, 0.804);
+    z-index: 1050;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+
+    font-size: 3em;
+    cursor: default;
+    user-select: none;
+}
+
+lottie-player {
+    margin-top: -50px;
+}
+
+#boop-report p {
+    width: 90%;
+    text-align: center;
+    margin: 0;
+    margin-top: -40px;
+}
+
+#boop-report b {
+    color: rgb(119, 44, 232);
 }

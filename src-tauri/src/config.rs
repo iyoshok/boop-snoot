@@ -3,7 +3,7 @@ use serde::{
     Serialize
 };
 
-pub const CONFIG_FILE: &str = "../boop.config.json"; //TODO: change to same directory later
+pub const CONFIG_FILE: &str = "../boop.config.json"; // TODO: change to same directory later
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
