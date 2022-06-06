@@ -7,6 +7,9 @@ import { sendError } from "../connection";
 import { BoopTimerContext } from "./booptimers";
 
 import './partner_row.css';
+import editIcon from '../../icons/edit.svg';
+import saveIcon from '../../icons/save.svg';
+import deleteIcon from '../../icons/delete.svg';
 
 interface BoopPayload {
     partner_key: string,
@@ -143,7 +146,7 @@ export default function PartnerRow(props) {
                             indicator: true,
                             online: props.online == 1
                         }}>{}</span>
-                        <button class="edit" onClick={() => setEditing(true)} ref={editButton}><img src="icons/edit.svg" alt="edit" /></button>
+                        <button class="edit" onClick={() => setEditing(true)} ref={editButton}><img src={editIcon} alt="edit" /></button>
                     </div>
                     <p class="last-boop">last boop: {lastBoopTimeText()}</p>
                 </Show>
@@ -167,8 +170,8 @@ export default function PartnerRow(props) {
                             </label>
                         </div>          
                         <div class="buttons">
-                            <button class="button-edit" onClick={async () => await saveEntry()}><img src="icons/save.svg" alt="save" /></button>
-                            <button class="button-delete"onClick={async () => await deleteEntry()}><img src="icons/delete.svg" alt="delete" /></button>
+                            <button class="button-edit" onClick={async () => await saveEntry()}><img src={saveIcon} alt="save" /></button>
+                            <button class="button-delete"onClick={async () => await deleteEntry()}><img src={deleteIcon} alt="delete" /></button>
                         </div>
                     </div>
                 </Show>

@@ -6,6 +6,8 @@ import { UnlistenFn } from '@tauri-apps/api/event';
 import "@lottiefiles/lottie-player";
 
 import './app.css';
+import closeIcon from '../icons/close.svg';
+import settingsIcon from '../icons/settings.svg';
 
 import Settings from './settings/settings';
 import ConnectionIndicator from './indicator/indicator';
@@ -70,9 +72,9 @@ const App: Component = () => {
 
         <button class='settings-button' onClick={() => setShowSettings(show => !show)}>
           <Show when={!showSettings()}
-            fallback={<img src="icons/close.svg" alt="Close Settings" />}
+            fallback={<img src={closeIcon} alt="Close Settings" />}
           >
-            <img src="icons/settings.svg" alt="Open Settings" />
+            <img src={settingsIcon} alt="Open Settings" />
           </Show>
         </button>
       </div>

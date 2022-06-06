@@ -380,9 +380,13 @@ async fn handle_message_input(
                             if entry.1 != PartnerOnlineStatus::Online {
                                 // change state
                                 entry.1 = PartnerOnlineStatus::Online;
-                                
+
                                 // update frontend if necessary
-                                send_partners_update_event(window, &partner_key, PartnerOnlineStatus::Online);
+                                send_partners_update_event(
+                                    window,
+                                    &partner_key,
+                                    PartnerOnlineStatus::Online
+                                );
                             }
                         }
                     }
@@ -392,9 +396,13 @@ async fn handle_message_input(
                             if entry.1 != PartnerOnlineStatus::Afk {
                                 // change state
                                 entry.1 = PartnerOnlineStatus::Afk;
-                                
+
                                 // update frontend if necessary
-                                send_partners_update_event(window, &partner_key, PartnerOnlineStatus::Afk);
+                                send_partners_update_event(
+                                    window,
+                                    &partner_key,
+                                    PartnerOnlineStatus::Afk
+                                );
                             }
                         }
                     }
