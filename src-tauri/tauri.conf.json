@@ -34,7 +34,7 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "dev.iyoshok.boop",
+      "identifier": "dev.iyoshok.boop.client",
       "longDescription": "",
       "macOS": {
         "entitlements": null,
@@ -44,7 +44,7 @@
         "signingIdentity": null
       },
       "resources": [],
-      "shortDescription": "",
+      "shortDescription": "A small application that allows you to boop someone over the internet",
       "targets": "all",
       "windows": {
         "certificateThumbprint": null,

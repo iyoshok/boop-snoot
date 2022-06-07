@@ -46,26 +46,31 @@ use {
     tauri::Window
 };
 
-use std::fmt::Display;
+use std::{
+    fmt::Display,
+    path::PathBuf
+};
 
-use tauri::Manager;
-use window_titles::get_random_window_title;
+use {
+    tauri::Manager,
+    window_titles::get_random_window_title
+};
+
+use {
+    config::CONFIG_FILENAME,
+    files::get_config_file_path,
+    partners::PARTNERS_FILENAME
+};
 
 use crate::{
-    config::{
-        BoopConfig,
-        CONFIG_FILE
-    },
+    config::BoopConfig,
     files::{
         get_object_or_default,
         save_file
     },
     message::MessageType,
     network::connect_to_server,
-    partners::{
-        BoopPartner,
-        PARTNERS_FILE
-    }
+    partners::BoopPartner
 };
 
 #[derive(Debug)]
@@ -123,6 +128,8 @@ pub struct ConfigState(Arc<Mutex<BoopConfig>>);
 pub struct PartnersState(Arc<Mutex<HashMap<String, (BoopPartner, PartnerOnlineStatus)>>>);
 pub struct ConnectionState(Arc<Mutex<Option<ConnectionInterface>>>);
 pub struct TrustAnchors(RootCertStore);
+struct ConfigFilePath(PathBuf);
+struct PartnersFilePath(PathBuf);
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 struct BoopPayload {
@@ -144,11 +151,14 @@ fn main() {
     // initialize logger
     init_logging();
 
+    let config_path = get_config_file_path(CONFIG_FILENAME);
+    let partners_path = get_config_file_path(PARTNERS_FILENAME);
+
     // get config
-    let config: BoopConfig = get_object_or_default(&CONFIG_FILE.to_owned());
+    let config: BoopConfig = get_object_or_default(&config_path);
 
     // get saved partners and build hashmap
-    let partners: Vec<BoopPartner> = get_object_or_default(&PARTNERS_FILE.to_owned());
+    let partners: Vec<BoopPartner> = get_object_or_default(&partners_path);
     let mut partners_hashmap = HashMap::new();
     for partner in partners {
         partners_hashmap.insert(partner.user_key(), (partner, PartnerOnlineStatus::Unknown));
@@ -168,10 +178,12 @@ fn main() {
         .manage(ConfigState(Arc::new(Mutex::new(config))))
         .manage(PartnersState(Arc::new(Mutex::new(partners_hashmap))))
         .manage(TrustAnchors(cert_store))
+        .manage(ConfigFilePath(config_path))
+        .manage(PartnersFilePath(partners_path))
         .setup(|app| {
             let main_window = app.get_window("main").unwrap();
             let _ = main_window.set_title(&get_random_window_title())?;
-            
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -227,13 +239,14 @@ async fn get_settings<'a>(state: State<'a, ConfigState>) -> Result<BoopConfig, (
 #[tauri::command]
 async fn save_settings<'a>(
     new_settings: BoopConfig,
-    state: State<'a, ConfigState>
+    config_state: State<'a, ConfigState>,
+    config_file: State<'a, ConfigFilePath>
 ) -> Result<(), ()> {
-    let mut config = state.0.lock().await;
+    let mut config = config_state.0.lock().await;
     debug!("saving settings");
 
     // save changes to disk
-    if let Err(err) = save_file(&CONFIG_FILE.to_owned(), &new_settings).await {
+    if let Err(err) = save_file(&config_file.0, &new_settings).await {
         error!("failed to save new settings to disk: {}", err);
         return Err(());
     }
@@ -247,9 +260,10 @@ async fn save_settings<'a>(
 #[tauri::command]
 async fn add_or_update_partner<'a>(
     partner: BoopPartner,
-    state: State<'a, PartnersState>
+    partners_state: State<'a, PartnersState>,
+    partners_file: State<'a, PartnersFilePath>
 ) -> Result<(), ()> {
-    let mut partners = state.0.lock().await;
+    let mut partners = partners_state.0.lock().await;
 
     // update state
     let old_val_option = partners.insert(
@@ -258,7 +272,7 @@ async fn add_or_update_partner<'a>(
     );
 
     // save changes to disk and roll state changes back if the disk write failed
-    let disk_write_result = save_partners_changes(&partners).await;
+    let disk_write_result = save_partners_changes(&partners, &partners_file.0).await;
     if let Err(_) = disk_write_result {
         // uh oh something went wrong while saving -> restore previous state so disk and
         // memory state match
@@ -279,15 +293,16 @@ async fn add_or_update_partner<'a>(
 #[tauri::command]
 async fn del_partner<'a>(
     partner_key: String,
-    state: State<'a, PartnersState>
+    partners_state: State<'a, PartnersState>,
+    partners_file: State<'a, PartnersFilePath>
 ) -> Result<(), ()> {
-    let mut partners = state.0.lock().await;
+    let mut partners = partners_state.0.lock().await;
 
     // update state
     let old_val_option = partners.remove(&partner_key);
 
     // save changes to disk and roll state changes back if the disk write failed
-    let disk_write_result = save_partners_changes(&partners).await;
+    let disk_write_result = save_partners_changes(&partners, &partners_file.0).await;
     if let Err(_) = disk_write_result {
         // uh oh something went wrong while saving -> restore previous state so disk and
         // memory state match
@@ -307,7 +322,9 @@ async fn del_partner<'a>(
 }
 
 #[tauri::command]
-async fn get_partners<'a>(state: State<'a, PartnersState>) -> Result<Vec<FrontendPartnerObject>, ()> {
+async fn get_partners<'a>(
+    state: State<'a, PartnersState>
+) -> Result<Vec<FrontendPartnerObject>, ()> {
     let partners = state.0.lock().await;
     Ok(get_partners_payload(&*partners))
 }
@@ -437,14 +454,15 @@ fn get_partners_payload(
 }
 
 async fn save_partners_changes(
-    partners: &HashMap<String, (BoopPartner, PartnerOnlineStatus)>
+    partners: &HashMap<String, (BoopPartner, PartnerOnlineStatus)>,
+    partners_file: &PathBuf
 ) -> Result<(), ()> {
     let partner_config: Vec<BoopPartner> = partners
         .iter()
         .map(|(_, (partner_object, _))| partner_object.clone())
         .collect();
 
-    if let Err(err) = save_file(&PARTNERS_FILE.to_owned(), &partner_config).await {
+    if let Err(err) = save_file(partners_file, &partner_config).await {
         error!("failed to save changed partners config to disk: {}", err);
         return Err(());
     }

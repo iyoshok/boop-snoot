@@ -3,7 +3,7 @@ use serde::{
     Serialize
 };
 
-pub const PARTNERS_FILE: &str = "../boop.partners.json"; // TODO: change to same directory later
+pub const PARTNERS_FILENAME: &str = "boop.partners.json"; // TODO: change to same directory later
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
