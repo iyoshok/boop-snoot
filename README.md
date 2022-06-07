@@ -4,6 +4,10 @@ This means that I knowingly ignored best practices in software, protocol and int
 developement process. I don't intend on actively developing this system any further. However, if you want to contribute to this project, feel free to submit
 pull requests or open issues, I will try to reply to them as quickly as possible. 
 
+## BOOP
+- Server: https://github.com/iyoshok/boop-relay
+- Client: <- You are here
+
 This repository contains the code for the BOOP client application. It's basically a small desktop application that allows you to ~poke~ boop your friends, 
 partners or colleagues (if you have that kind of relationship). As stated in the disclaimer, this is just a tiny side project and, as such, there's no elaborate
 registration or account creation process. If you want to use the service, your server provider has to add your username and a hash of your desired password 
