@@ -7,7 +7,7 @@
     "distDir": "../dist"
   },
   "package": {
-    "productName": "boop-snoot",
+    "productName": "BOOP Client",
     "version": "1.0.1"
   },
   "tauri": {
