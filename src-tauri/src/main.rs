@@ -3,7 +3,7 @@
     windows_subsystem = "windows"
 )]
 
-const LOG_DIR: &str = "logs";
+const LOG_DIR_BASE: &str = "logs";
 
 use {
     flexi_logger::{
@@ -15,7 +15,6 @@ use {
     rustls_native_certs::load_native_certs,
     std::{
         collections::HashMap,
-        fs,
         io,
         process::exit,
         sync::Arc
@@ -65,6 +64,7 @@ use {
 use crate::{
     config::BoopConfig,
     files::{
+        get_log_dir_name,
         get_object_or_default,
         save_file
     },
@@ -202,12 +202,13 @@ fn main() {
 }
 
 fn init_logging() {
-    fs::create_dir_all(LOG_DIR).expect("failed to create logging directory");
+    let log_dir = get_log_dir_name(LOG_DIR_BASE);
+
     Logger::try_with_str("debug")
         .expect("failed to set logging configuration")
         .log_to_file(
             FileSpec::default()
-                .directory(LOG_DIR)
+                .directory(log_dir)
                 .basename("boop_client")
         )
         .write_mode(WriteMode::BufferAndFlush)

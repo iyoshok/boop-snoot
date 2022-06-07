@@ -47,11 +47,33 @@ fn read_file<T: DeserializeOwned>(filename: &PathBuf) -> Result<T, io::Error> {
 pub fn get_config_file_path(filename: &str) -> PathBuf {
     if let Some(proj_dir) = ProjectDirs::from("dev", "iyoshok", "boop.client") {
         let cfg_dir = proj_dir.config_dir();
-        
+
         if let Ok(_) = fs::create_dir_all(cfg_dir) {
             return cfg_dir.join(filename);
+        } else {
+            panic!(
+                "failed to create config directory: {}",
+                cfg_dir.to_string_lossy()
+            );
         }
     }
 
-    PathBuf::from(filename)
+    panic!("failed to get config directory");
+}
+
+pub fn get_log_dir_name(base: &str) -> PathBuf {
+    if let Some(proj_dir) = ProjectDirs::from("dev", "iyoshok", "boop.client") {
+        let log_dir = proj_dir.data_dir().join(base);
+
+        if let Ok(_) = fs::create_dir_all(&log_dir) {
+            return log_dir;
+        } else {
+            panic!(
+                "failed to create logging directory: {}",
+                log_dir.to_string_lossy()
+            );
+        }
+    }
+
+    panic!("failed to get logging directory");
 }
