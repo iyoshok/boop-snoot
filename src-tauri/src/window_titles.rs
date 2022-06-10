@@ -1,4 +1,13 @@
-use rand::seq::SliceRandom;
+use {
+    chrono::{
+        Datelike,
+        TimeZone,
+        Utc,
+        Weekday
+    },
+    chrono_tz::US::Pacific,
+    rand::seq::SliceRandom
+};
 
 const MOJIS: [&str; 87] = [
     "(* ^ ω ^)",
@@ -123,10 +132,15 @@ const GREETINGS: [&str; 29] = [
 ];
 
 pub fn get_random_window_title() -> String {
+    let utc_time = Utc::now().naive_utc();
+    let california_time = Pacific.from_utc_datetime(&utc_time);
     let mut rng = rand::thread_rng();
-    format!(
-        "{} {} #BOOP",
-        GREETINGS.choose(&mut rng).unwrap(),
-        MOJIS.choose(&mut rng).unwrap()
-    )
+
+    let greeting = if california_time.date().weekday() == Weekday::Fri {
+        "It's friday in California 🔫"
+    } else {
+        GREETINGS.choose(&mut rng).unwrap()
+    };
+
+    format!("{} {} #BOOP", greeting, MOJIS.choose(&mut rng).unwrap())
 }
