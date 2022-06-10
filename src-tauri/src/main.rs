@@ -61,6 +61,14 @@ use {
     partners::PARTNERS_FILENAME
 };
 
+use tauri::Menu;
+
+#[cfg(target_os = "macos")]
+use tauri::{
+    MenuItem,
+    Submenu
+};
+
 use crate::{
     config::BoopConfig,
     files::{
@@ -173,7 +181,7 @@ fn main() {
         }
     };
 
-    tauri::Builder::default()
+    let mut tauri_builder = tauri::Builder::default()
         .manage(ConnectionState(Arc::new(Mutex::new(None))))
         .manage(ConfigState(Arc::new(Mutex::new(config))))
         .manage(PartnersState(Arc::new(Mutex::new(partners_hashmap))))
@@ -196,7 +204,13 @@ fn main() {
             del_partner,
             show_main_window,
             boop
-        ])
+        ]);
+
+    if let Some(menu) = get_window_menu() {
+        tauri_builder = tauri_builder.menu(menu)
+    }
+
+    tauri_builder
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -230,6 +244,36 @@ fn init_trust_anchors() -> Result<RootCertStore, io::Error> {
     }
 
     Ok(roots)
+}
+
+#[cfg(target_os = "macos")]
+fn get_window_menu() -> Option<Menu> {
+    // create menu to allow copy + paste on macos (what a stupid way to handle this)
+
+    let window_menu = Menu::new()
+        .add_native_item(MenuItem::Minimize)
+        .add_native_item(MenuItem::Zoom)
+        .add_native_item(MenuItem::EnterFullScreen)
+        .add_native_item(MenuItem::CloseWindow);
+
+    let edit_menu = Menu::new()
+        .add_native_item(MenuItem::SelectAll)
+        .add_native_item(MenuItem::Undo)
+        .add_native_item(MenuItem::Redo)
+        .add_native_item(MenuItem::Copy)
+        .add_native_item(MenuItem::Cut)
+        .add_native_item(MenuItem::Paste);
+
+    let menu = Menu::new()
+        .add_submenu(Submenu::new("Window", window_menu))
+        .add_submenu(Submenu::new("Edit", edit_menu));
+
+    Some(menu)
+}
+
+#[cfg(not(target_os = "macos"))]
+fn get_window_menu() -> Option<Menu> {
+    None
 }
 
 #[tauri::command]
