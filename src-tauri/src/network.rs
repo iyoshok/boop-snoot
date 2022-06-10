@@ -82,13 +82,13 @@ pub async fn connect_to_server<'a>(
     send_connection_status(&window, ServerConnectionStatus::AttemptingConnection);
 
     // lock config and get necessary data
-    let (addr, domain);
+    let (addresses, domain);
     let (user, password);
     {
         let app_settings = config_state.0.lock().await;
 
         // parse address and domain + resolve dns for next steps
-        (addr, domain) = parse_server_address(&app_settings.server_address())?;
+        (addresses, domain) = resolve_server_addresses(&app_settings.server_address())?;
         user = app_settings.user_name();
         password = app_settings.password();
     }
@@ -117,8 +117,29 @@ pub async fn connect_to_server<'a>(
         .with_no_client_auth();
     let connector = TlsConnector::from(Arc::new(config));
 
-    // connect to socket
-    let stream = TcpStream::connect(&addr).await?;
+    // connect to socket -> try all resolved ip addresses from the hostname
+    let ip_count = addresses.len();
+    debug!("hostname resolved into {} IP addresses", ip_count);
+    let mut iter = addresses.iter();
+    let stream = loop {
+        if let Some(addr) = iter.next() {
+            // try connection with current ip
+            let conn_result = TcpStream::connect(&addr).await;
+            if let Ok(stream) = conn_result {
+                // yay, connection succeeded -> return it for use in next steps
+                break stream;
+            } else if let Err(err) = conn_result {
+                // oh no, connection failed -> log individual error and continue
+                error!("connection to {} failed: {}", addr, err);
+            }
+        } else {
+            // cancel connection attempt because none of the ips worked
+            Err(format!(
+                "Tried {} resolved IP addresses, but failed to make connection to server",
+                ip_count
+            ))?;
+        }
+    };
 
     debug!("{}", &domain);
     let domain = rustls::ServerName::try_from(domain.as_str())
@@ -178,11 +199,10 @@ pub async fn connect_to_server<'a>(
     Ok(true)
 }
 
-fn parse_server_address(server_address: &String) -> Result<(SocketAddr, String), io::Error> {
-    let addr = server_address
-        .to_socket_addrs()?
-        .next()
-        .ok_or_else(|| io::Error::from(io::ErrorKind::NotFound))?;
+fn resolve_server_addresses(
+    server_address: &String
+) -> Result<(Vec<SocketAddr>, String), io::Error> {
+    let addresses: Vec<SocketAddr> = server_address.to_socket_addrs()?.collect();
 
     // split off port
     let colon_search_result = server_address.rfind(":");
@@ -190,7 +210,7 @@ fn parse_server_address(server_address: &String) -> Result<(SocketAddr, String),
         let domain: String = server_address.chars().take(idx).collect();
         debug!("extracted domain: {}", &domain);
 
-        Ok((addr, domain))
+        Ok((addresses, domain))
     } else {
         error!("server address doesn't include port");
         Err(io::Error::from(io::ErrorKind::NotFound))
